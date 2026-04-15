@@ -1,18 +1,13 @@
-// Define the requestAnimFrame function
-window.requestAnimFrame = function () {
-  // Check if the browser supports requestAnimFrame
-  return (
-    window.requestAnimationFrame ||
-    window.webkitRequestAnimationFrame ||
-    window.mozRequestAnimationFrame ||
-    window.oRequestAnimationFrame ||
-    window.msRequestAnimationFrame ||
-    // If none of these options are available, use setTimeout to call the callback function
-    function (callback) {
-      window.setTimeout(callback);
-    }
-  );
-};
+// Define a cross-browser animation frame wrapper
+window.requestAnimFrame =
+  window.requestAnimationFrame ||
+  window.webkitRequestAnimationFrame ||
+  window.mozRequestAnimationFrame ||
+  window.oRequestAnimationFrame ||
+  window.msRequestAnimationFrame ||
+  function (callback) {
+    window.setTimeout(callback, 1000 / 60);
+  };
 
 // Initialization function to get the canvas element and return relevant information
 function init(elemid) {
@@ -34,8 +29,9 @@ function init(elemid) {
 // Execute the function after the page has fully loaded
 window.onload = function () {
   // Get the drawing context and canvas element
-  let c = init("canvas").c,
-    canvas = init("canvas").canvas,
+  let inito = init("canvas"),
+    c = inito.c,
+    canvas = inito.canvas,
     // Set the canvas width to the window's inner width and height
     w = (canvas.width = window.innerWidth),
     h = (canvas.height = window.innerHeight),
@@ -195,7 +191,7 @@ window.onload = function () {
       // Otherwise, draw a dark cyan circle
       if (dist(this.x, this.y, target.x, target.y) <= this.l) {
         c.arc(this.x, this.y, 2 * this.rand + 1, 0, 2 * Math.PI);
-        c.fillStyle = "whith";
+        c.fillStyle = "white";
       } else {
         c.arc(this.x, this.y, this.rand * 2, 0, 2 * Math.PI);
         c.fillStyle = "darkcyan";
@@ -206,14 +202,17 @@ window.onload = function () {
   }
 
   // Initialize variables
+  const cpuCores = navigator.hardwareConcurrency || 4;
+  const isLowPowerDevice = cpuCores <= 4;
+
   let maxl = 400, // Maximum length of tentacles
     minl = 50, // Minimum length of tentacles
-    n = 30, // Number of segments in each tentacle
-    numt = 600, // Number of tentacles
+    n = isLowPowerDevice ? 24 : 30, // Number of segments in each tentacle
+    numt = isLowPowerDevice ? 280 : 600, // Number of tentacles
     tent = [], // Array of tentacles
     clicked = false, // Whether the mouse is pressed
-    target = { x: 0, y: 0 }, // Target point for the tentacles
-    last_target = {}, // Last target point for the tentacles
+    target = { x: w / 2, y: h / 2 }, // Target point for the tentacles
+    last_target = { x: w / 2, y: h / 2 }, // Last target point for the tentacles
     t = 0, // Current time
     q = 10; // Step size for tentacle movement
 
@@ -232,7 +231,7 @@ window.onload = function () {
   // Method to draw the image
   function draw() {
     // If the mouse is moving, calculate the offset for the target point
-    if (mouse.x) {
+    if (mouse.x !== false) {
       target.errx = mouse.x - target.x;
       target.erry = mouse.y - target.y;
     } else {
@@ -295,8 +294,6 @@ window.onload = function () {
 
   // Call the loop function to start the animation ONCE
   loop();
-  // Use setInterval to repeat
-  setInterval(loop, 1000 / 60);
 
   // Listen for window resize events
   window.addEventListener("resize", function () {
