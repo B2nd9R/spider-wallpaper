@@ -204,11 +204,21 @@ window.onload = function () {
   // Initialize variables
   const cpuCores = navigator.hardwareConcurrency || 4;
   const isLowPowerDevice = cpuCores <= 4;
+  const screenArea = window.innerWidth * window.innerHeight;
+  const areaFactor = Math.min(1, 2073600 / Math.max(screenArea, 1));
+  const targetFps = isLowPowerDevice ? 45 : 60;
+  const frameDuration = 1000 / targetFps;
+  const idleTimeoutMs = 5000;
+  let lastFrameTime = 0;
+  let lastMouseMoveAt = -Infinity;
 
   let maxl = 400, // Maximum length of tentacles
     minl = 50, // Minimum length of tentacles
-    n = isLowPowerDevice ? 24 : 30, // Number of segments in each tentacle
-    numt = isLowPowerDevice ? 280 : 600, // Number of tentacles
+    n = isLowPowerDevice ? 22 : 28, // Number of segments in each tentacle
+    numt = Math.max(
+      180,
+      Math.floor((isLowPowerDevice ? 320 : 520) * areaFactor),
+    ), // Number of tentacles
     tent = [], // Array of tentacles
     clicked = false, // Whether the mouse is pressed
     target = { x: w / 2, y: h / 2 }, // Target point for the tentacles
@@ -230,8 +240,10 @@ window.onload = function () {
   }
   // Method to draw the image
   function draw() {
+    const isMouseIdle = performance.now() - lastMouseMoveAt >= idleTimeoutMs;
+
     // If the mouse is moving, calculate the offset for the target point
-    if (mouse.x !== false) {
+    if (mouse.x !== false && !isMouseIdle) {
       target.errx = mouse.x - target.x;
       target.erry = mouse.y - target.y;
     } else {
@@ -268,12 +280,12 @@ window.onload = function () {
     c.fill();
 
     // Draw the center points of all the tentacles
-    for (i = 0; i < numt; i++) {
+    for (let i = 0; i < numt; i++) {
       tent[i].move(last_target, target);
       tent[i].show2(target);
     }
     // Draw all the tentacles
-    for (i = 0; i < numt; i++) {
+    for (let i = 0; i < numt; i++) {
       tent[i].show(target);
     }
     // Update the last target point coordinates
@@ -281,9 +293,19 @@ window.onload = function () {
     last_target.y = target.y;
   }
   // Function to continuously execute the drawing animation
-  function loop() {
+  function loop(now) {
     // Use requestAnimFrame to loop the execution
     window.requestAnimFrame(loop);
+
+    // Cap render frequency to keep animation stable across 60/120/144/240Hz setups
+    if (!now) {
+      now = performance.now();
+    }
+    const delta = now - lastFrameTime;
+    if (delta < frameDuration) {
+      return;
+    }
+    lastFrameTime = now - (delta % frameDuration);
 
     // Clear the canvas
     c.clearRect(0, 0, w, h);
@@ -313,6 +335,7 @@ window.onload = function () {
       // Update the current mouse position
       mouse.x = e.pageX - this.offsetLeft;
       mouse.y = e.pageY - this.offsetTop;
+      lastMouseMoveAt = performance.now();
     },
     false,
   );
